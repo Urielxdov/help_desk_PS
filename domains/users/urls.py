@@ -1,14 +1,18 @@
-from django.urls import path
-from .api.views import (
-    UserListCreateView,
-    UserDetailView,
-    DepartmentListCreateView,
-    DepartmentAgentsView,
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenBlacklistView,
 )
+from .api.views import UserViewSet
+
+router = DefaultRouter(trailing_slash=False)
+router.register('users', UserViewSet, basename='user')
 
 urlpatterns = [
-    path("users/", UserListCreateView.as_view(), name="user-list-create"),
-    path("users/<str:user_id>/", UserDetailView.as_view(), name="user-detail"),
-    path("departments/", DepartmentListCreateView.as_view(), name="department-list-create"),
-    path("departments/<str:dept_id>/agents/", DepartmentAgentsView.as_view(), name="department-agents"),
+    path('auth/login', TokenObtainPairView.as_view(), name='auth-login'),
+    path('auth/refresh', TokenRefreshView.as_view(), name='auth-refresh'),
+    path('auth/logout', TokenBlacklistView.as_view(), name='auth-logout'),
+    path('', include(router.urls)),
 ]

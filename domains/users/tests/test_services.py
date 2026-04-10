@@ -1,74 +1,49 @@
 import pytest
-
-from domains.users.dtos import UserDTO, DepartmentDTO
-from domains.users.services import UserService, DepartmentService
+from domains.users.dtos import UserDTO
+from domains.users.services import UserService
 from shared.exceptions import ConflictError, NotFoundError, ForbiddenError
-from .mocks import MockUserRepository, MockDepartmentRepository
+from .mocks import MockUserRepository
 
 
-# ── UserService ───────────────────────────────────────────────────────────────
+def svc(users=None):
+    return UserService(repo=MockUserRepository(users or []))
+
 
 def test_create_user():
-    service = UserService(repo=MockUserRepository())
-    user = service.create_user(
-        email="agent@test.com", full_name="Agent One", role="agent", password="secret123"
-    )
-    assert user.email == "agent@test.com"
-    assert user.role == "agent"
+    user = svc().create_user('a@test.com', 'Agent One', 'agent', 'pass1234')
+    assert user.email == 'a@test.com'
+    assert user.role == 'agent'
 
 
-def test_create_user_duplicate_email_raises():
-    existing = UserDTO(id="1", email="dup@test.com", full_name="Dup", role="agent")
-    service = UserService(repo=MockUserRepository([existing]))
+def test_create_user_duplicate_raises():
+    existing = UserDTO(id='1', email='dup@test.com', full_name='Dup', role='agent')
     with pytest.raises(ConflictError):
-        service.create_user(email="dup@test.com", full_name="Other", role="agent")
+        svc([existing]).create_user('dup@test.com', 'Other', 'agent', 'pass1234')
 
 
-def test_get_user_not_found_raises():
-    service = UserService(repo=MockUserRepository())
+def test_get_user_not_found():
     with pytest.raises(NotFoundError):
-        service.get_user("nonexistent")
+        svc().get_user('nonexistent')
 
 
 def test_delete_user_requires_admin():
-    existing = UserDTO(id="u1", email="x@test.com", full_name="X", role="agent")
-    service = UserService(repo=MockUserRepository([existing]))
+    u = UserDTO(id='1', email='x@test.com', full_name='X', role='agent')
     with pytest.raises(ForbiddenError):
-        service.delete_user(user_id="u1", requesting_role="agent")
+        svc([u]).delete_user('1', requesting_role='agent')
 
 
 def test_delete_user_as_admin():
-    existing = UserDTO(id="u1", email="x@test.com", full_name="X", role="agent")
-    repo = MockUserRepository([existing])
-    service = UserService(repo=repo)
-    service.delete_user(user_id="u1", requesting_role="admin")
-    assert service._repo.get_by_id("u1") is None
+    u = UserDTO(id='1', email='x@test.com', full_name='X', role='agent')
+    repo = MockUserRepository([u])
+    UserService(repo=repo).delete_user('1', requesting_role='admin')
+    assert repo.get_by_id('1') is None
 
 
-# ── DepartmentService ─────────────────────────────────────────────────────────
-
-def test_create_department():
-    service = DepartmentService(repo=MockDepartmentRepository())
-    dept = service.create_department(name="IT", keywords="servidor red vpn", sla_hours=8)
-    assert dept.name == "IT"
-    assert dept.keywords == "servidor red vpn"
-
-
-def test_get_department_not_found_raises():
-    service = DepartmentService(repo=MockDepartmentRepository())
-    with pytest.raises(NotFoundError):
-        service.get_department("nonexistent")
-
-
-def test_list_agents_in_department():
-    dept = DepartmentDTO(id="d1", name="IT")
+def test_list_agents_filters_by_role():
     users = [
-        UserDTO(id="u1", email="a@t.com", full_name="A", role="agent", department_id="d1"),
-        UserDTO(id="u2", email="b@t.com", full_name="B", role="agent", department_id="d2"),
+        UserDTO(id='1', email='a@t.com', full_name='A', role='agent'),
+        UserDTO(id='2', email='b@t.com', full_name='B', role='hd_manager'),
     ]
-    dept_repo = MockDepartmentRepository([dept])
-    user_repo = MockUserRepository(users)
-    service = DepartmentService(repo=dept_repo)
-    agents = service.list_agents("d1", user_repo=user_repo)
+    agents = svc(users).list_agents()
     assert len(agents) == 1
-    assert agents[0].id == "u1"
+    assert agents[0].role == 'agent'

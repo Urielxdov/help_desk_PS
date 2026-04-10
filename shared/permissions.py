@@ -1,35 +1,28 @@
 from rest_framework.permissions import BasePermission
 
 
-class IsTenantMember(BasePermission):
-    def has_permission(self, request, view):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and hasattr(request, 'tenant')
-            and request.tenant is not None
-        )
-
-
-class IsTenantAdmin(IsTenantMember):
+class IsAdmin(BasePermission):
     def has_permission(self, request, view):
         return (
-            super().has_permission(request, view)
+            request.user
+            and request.user.is_authenticated
             and getattr(request.user, 'role', None) == 'admin'
         )
 
 
-class IsHDManager(IsTenantMember):
+class IsHDManager(BasePermission):
     def has_permission(self, request, view):
         return (
-            super().has_permission(request, view)
+            request.user
+            and request.user.is_authenticated
             and getattr(request.user, 'role', None) in ('admin', 'hd_manager')
         )
 
 
-class IsAgent(IsTenantMember):
+class IsAgent(BasePermission):
     def has_permission(self, request, view):
         return (
-            super().has_permission(request, view)
+            request.user
+            and request.user.is_authenticated
             and getattr(request.user, 'role', None) in ('admin', 'hd_manager', 'agent')
         )

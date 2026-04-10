@@ -25,15 +25,8 @@ class SoftDeleteModel(BaseModel):
         abstract = True
 
 
-class TenantAwareModel(SoftDeleteModel):
-    """Base para modelos que viven dentro del schema de un tenant."""
-
-    class Meta:
-        abstract = True
-
-
-class AuditModel(TenantAwareModel):
-    """Registra quién creó y modificó el registro."""
+class AuditModel(SoftDeleteModel):
+    """Registra el UUID del usuario que creó/modificó el registro."""
     created_by = models.UUIDField(null=True, blank=True)
     updated_by = models.UUIDField(null=True, blank=True)
 

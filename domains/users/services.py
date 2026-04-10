@@ -1,48 +1,16 @@
 from shared.exceptions import NotFoundError, ConflictError, ForbiddenError
-from .dtos import UserDTO, DepartmentDTO
-from .repository import (
-    IUserRepository, DjangoUserRepository,
-    IDepartmentRepository, DjangoDepartmentRepository,
-)
-
-
-class DepartmentService:
-    def __init__(self, repo: IDepartmentRepository = None):
-        self._repo = repo or DjangoDepartmentRepository()
-
-    def create_department(self, name: str, keywords: str = "", sla_hours: int = 24) -> DepartmentDTO:
-        return self._repo.create(name=name, keywords=keywords, sla_hours=sla_hours)
-
-    def get_department(self, dept_id: str) -> DepartmentDTO:
-        dept = self._repo.get_by_id(dept_id)
-        if not dept:
-            raise NotFoundError(f"Departamento '{dept_id}' no encontrado")
-        return dept
-
-    def list_departments(self) -> list[DepartmentDTO]:
-        return self._repo.list_active()
-
-    def list_agents(self, dept_id: str, user_repo: IUserRepository = None) -> list[UserDTO]:
-        dept = self.get_department(dept_id)
-        repo = user_repo or DjangoUserRepository()
-        return repo.list_by_department(dept.id)
+from .dtos import UserDTO
+from .repository import IUserRepository, DjangoUserRepository
 
 
 class UserService:
     def __init__(self, repo: IUserRepository = None):
         self._repo = repo or DjangoUserRepository()
 
-    def create_user(self, email: str, full_name: str, role: str, department_id: str = None, password: str = None) -> UserDTO:
-        existing = self._repo.get_by_email(email)
-        if existing:
+    def create_user(self, email: str, full_name: str, role: str, password: str) -> UserDTO:
+        if self._repo.get_by_email(email):
             raise ConflictError(f"Ya existe un usuario con el email '{email}'")
-        return self._repo.create(
-            email=email,
-            full_name=full_name,
-            role=role,
-            department_id=department_id,
-            password=password,
-        )
+        return self._repo.create(email=email, full_name=full_name, role=role, password=password)
 
     def get_user(self, user_id: str) -> UserDTO:
         user = self._repo.get_by_id(user_id)
@@ -50,7 +18,18 @@ class UserService:
             raise NotFoundError(f"Usuario '{user_id}' no encontrado")
         return user
 
+    def list_users(self) -> list[UserDTO]:
+        return self._repo.list_active()
+
+    def update_user(self, user_id: str, **fields) -> UserDTO:
+        self.get_user(user_id)  # valida que exista
+        return self._repo.update(user_id, **fields)
+
     def delete_user(self, user_id: str, requesting_role: str) -> None:
-        if requesting_role != "admin":
-            raise ForbiddenError("Solo un admin puede eliminar usuarios")
+        if requesting_role != 'admin':
+            raise ForbiddenError('Solo un admin puede eliminar usuarios')
+        self.get_user(user_id)  # valida que exista
         self._repo.soft_delete(user_id)
+
+    def list_agents(self) -> list[UserDTO]:
+        return self._repo.list_by_role('agent')

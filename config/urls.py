@@ -1,9 +1,9 @@
-from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/v1/', include('domains.users.urls')),
-    path('api/v1/help-desk/', include('domains.help_desk.urls')),
-    path('api/v1/analytics/', include('domains.analytics.urls')),
-]
+    path('api/', include('apps.catalog.urls')),
+    path('api/', include('apps.helpdesks.urls')),
+    path('api/auth/', include('authentication_urls')),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

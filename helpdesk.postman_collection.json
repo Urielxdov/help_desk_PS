@@ -1,0 +1,379 @@
+{
+  "info": {
+    "name": "Help Desk API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "token",    "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Obtener token (super_admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/token/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"role\": \"super_admin\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Obtener token (area_admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/token/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 2,\n  \"role\": \"area_admin\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Obtener token (technician)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/token/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 3,\n  \"role\": \"technician\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Obtener token (user)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/token/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 4,\n  \"role\": \"user\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Departamentos",
+      "item": [
+        {
+          "name": "Listar departamentos",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/departments/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Crear departamento (super_admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/departments/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Tecnología\",\n  \"descripcion\": \"Departamento de TI\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar departamento (super_admin)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/departments/1/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Tecnología e Innovación\",\n  \"descripcion\": \"Depto de TI actualizado\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Categorías de un departamento",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/departments/1/categories/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Categorías de servicio",
+      "item": [
+        {
+          "name": "Crear categoría (area_admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/service-categories/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Hardware\",\n  \"department\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar categoría (area_admin)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/service-categories/1/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Hardware y Periféricos\",\n  \"department\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Servicios de una categoría",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/service-categories/1/services/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Servicios",
+      "item": [
+        {
+          "name": "Crear servicio (area_admin)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/services/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Cambio de teclado\",\n  \"descripcion\": \"Sustitución de teclado dañado\",\n  \"category\": 1,\n  \"tiempo_estimado_default\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar servicio (area_admin)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/services/1/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Cambio de teclado o mouse\",\n  \"descripcion\": \"Sustitución de periférico dañado\",\n  \"category\": 1,\n  \"tiempo_estimado_default\": 3\n}"
+            }
+          }
+        },
+        {
+          "name": "Activar / desactivar servicio (area_admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/services/1/toggle/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Help Desks",
+      "item": [
+        {
+          "name": "Listar HDs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/helpdesks/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "helpdesks", ""],
+              "query": [
+                { "key": "estado",    "value": "abierto",  "disabled": true },
+                { "key": "prioridad", "value": "alta",     "disabled": true },
+                { "key": "page",      "value": "1",        "disabled": true }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Crear HD",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/helpdesks/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service\": 1,\n  \"origen\": \"error\",\n  \"prioridad\": \"alta\",\n  \"descripcion_problema\": \"El teclado no responde al presionar teclas\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Detalle de un HD",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/helpdesks/1/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Cambiar estado (technician)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/helpdesks/1/status/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"en_progreso\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Asignar técnico (area_admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/helpdesks/1/assign/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responsable_id\": 3,\n  \"fecha_compromiso\": \"2026-04-20T18:00:00Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Resolver HD (technician)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/helpdesks/1/resolve/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion_solucion\": \"Se reemplazó el teclado por uno nuevo del almacén.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Adjuntos",
+      "item": [
+        {
+          "name": "Adjuntar URL",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/helpdesks/1/attachments/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"url\",\n  \"nombre\": \"Foto del teclado dañado\",\n  \"valor\": \"https://drive.google.com/file/ejemplo\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Adjuntar archivo (form-data)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/helpdesks/1/attachments/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "tipo",    "value": "archivo", "type": "text" },
+                { "key": "nombre",  "value": "Reporte de falla", "type": "text" },
+                { "key": "archivo", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eliminar adjunto",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/helpdesks/1/attachments/1/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Comentarios",
+      "item": [
+        {
+          "name": "Listar comentarios",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/helpdesks/1/comments/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Agregar comentario público",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/helpdesks/1/comments/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contenido\": \"Ya tenemos el repuesto, iniciamos mañana.\",\n  \"es_interno\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Agregar nota interna (solo TI)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/helpdesks/1/comments/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contenido\": \"El usuario reportó este problema la semana pasada. Revisar historial.\",\n  \"es_interno\": true\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

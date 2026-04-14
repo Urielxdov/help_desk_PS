@@ -1,3 +1,14 @@
+"""
+Catálogo de servicios de soporte. Define la jerarquía:
+    Department → ServiceCategory → Service
+
+Un Service es lo que el usuario selecciona al abrir un HelpDesk.
+Su campo tiempo_estimado_default se hereda por el ticket al momento de la
+creación si el solicitante no especifica uno explícito.
+
+Las FKs usan PROTECT (no CASCADE) para evitar eliminar departamentos o
+categorías que ya tienen tickets históricos asociados a través de sus servicios.
+"""
 from django.db import models
 
 

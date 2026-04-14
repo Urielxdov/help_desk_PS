@@ -1,3 +1,18 @@
+"""
+Configuración de Django para el servicio de Help Desk.
+
+Un único archivo de settings; no hay separación development/production.
+El comportamiento cambia según las variables de entorno del proceso.
+Ver .env.example (si existe) o el docker-compose.yml para las variables esperadas.
+
+Decisiones de diseño:
+- Sin django.contrib.auth ni django.contrib.admin: la gestión de usuarios
+  es responsabilidad del sistema externo; este servicio no tiene sesiones.
+- Sin SessionMiddleware ni AuthenticationMiddleware: la API es stateless,
+  la autenticación se hace con JWT en cada petición.
+- JWTAuthentication decodifica sin verificar firma porque este servicio
+  no tiene acceso a la clave privada del sistema externo.
+"""
 import os
 from pathlib import Path
 

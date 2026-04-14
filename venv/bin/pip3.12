@@ -1,4 +1,4 @@
-#!/home/uriel.hernandez/help_desk_PS/venv/bin/python3
+#!/home/uhernand/help_desk_PS/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -15,7 +15,12 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceCategory
         fields = ['id', 'nombre', 'department', 'department_nombre', 'activo']
-        read_only_fields = ['id', 'department_nombre']
+        read_only_fields = ['id', 'department_nombre', 'activo']
+
+    def validate_department(self, value):
+        if not value.activo:
+            raise serializers.ValidationError('El departamento está inactivo.')
+        return value
 
 
 class ServiceSerializer(serializers.ModelSerializer):
@@ -27,4 +32,9 @@ class ServiceSerializer(serializers.ModelSerializer):
             'id', 'nombre', 'descripcion', 'category', 'category_nombre',
             'tiempo_estimado_default', 'activo', 'created_at',
         ]
-        read_only_fields = ['id', 'category_nombre', 'created_at']
+        read_only_fields = ['id', 'category_nombre', 'created_at', 'activo']
+
+    def validate_category(self, value):
+        if not value.activo:
+            raise serializers.ValidationError('La categoría está inactiva.')
+        return value

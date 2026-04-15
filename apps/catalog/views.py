@@ -44,6 +44,15 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         serializer = ServiceCategorySerializer(qs, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'], url_path='services', permission_classes=[IsAuthenticated])
+    def services(self, request, pk=None):
+        department = self.get_object()
+        qs = Service.objects.select_related('category').filter(
+            category__department=department, activo=True
+        )
+        serializer = ServiceSerializer(qs, many=True)
+        return Response(serializer.data)
+
 
 class ServiceCategoryViewSet(
     mixins.CreateModelMixin,

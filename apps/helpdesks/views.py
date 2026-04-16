@@ -151,7 +151,7 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
         """
         hd = get_object_or_404(self.get_queryset(), pk=pk)
 
-        if hd.estado not in ('en_progreso', 'en_espera'):
+        if hd.estado not in ('en_progreso', 'en_espera', 'resuelto'):
             raise ValidationError(
                 {'estado': f'Solo se puede resolver desde en_progreso o en_espera. Estado actual: {hd.estado}'}
             )

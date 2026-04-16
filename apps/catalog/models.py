@@ -55,6 +55,7 @@ class Service(models.Model):
         help_text='Tiempo estimado en horas',
     )
     activo = models.BooleanField(default=True)
+    client_close = models.BooleanField(default=True, help_text='Permite que el solicitante cierre el ticket')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

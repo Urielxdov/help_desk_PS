@@ -173,8 +173,15 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
 
         role = getattr(request.user, 'role', None)
         is_solicitante = hd.solicitante_id == request.user.user_id
-        if role == 'technician' or (role == 'user' and not is_solicitante):
-            raise PermissionDenied('Solo el solicitante, area_admin o super_admin pueden cerrar el ticket.')
+
+        if role == 'technician':
+            raise PermissionDenied('Los técnicos no pueden cerrar tickets.')
+
+        if role == 'user':
+            if not is_solicitante:
+                raise PermissionDenied('Solo el solicitante del ticket puede cerrarlo.')
+            if not hd.service.client_close:
+                raise PermissionDenied('Este tipo de servicio no permite que el solicitante cierre el ticket.')
 
         if hd.estado != 'resuelto':
             raise ValidationError({'estado': f'Solo se puede cerrar un ticket resuelto. Estado actual: {hd.estado}'})

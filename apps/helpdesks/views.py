@@ -217,6 +217,7 @@ class HDCommentViewSet(
 ):
     serializer_class = HDCommentSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         # Los comentarios internos son notas del equipo de TI.

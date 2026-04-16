@@ -15,7 +15,7 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -97,6 +97,9 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
                            f'Opciones válidas: {VALID_TRANSITIONS[hd.estado]}'}
             )
 
+        if getattr(request.user, 'role', None) == 'technician' and new_status in ('resuelto', 'cerrado'):
+            raise PermissionDenied('Los técnicos no pueden marcar como resuelto o cerrado desde este endpoint.')
+
         hd.estado = new_status
         hd.save(update_fields=['estado', 'updated_at'])
         return Response(HelpDeskSerializer(hd).data)
@@ -161,6 +164,23 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
         hd.descripcion_solucion = descripcion_solucion
         hd.fecha_efectividad = timezone.now()
         hd.save(update_fields=['estado', 'descripcion_solucion', 'fecha_efectividad', 'updated_at'])
+        return Response(HelpDeskSerializer(hd).data)
+
+    @action(detail=True, methods=['patch'], url_path='close',
+            permission_classes=[IsAuthenticated])
+    def close(self, request, pk=None):
+        hd = get_object_or_404(self.get_queryset(), pk=pk)
+
+        role = getattr(request.user, 'role', None)
+        is_solicitante = hd.solicitante_id == request.user.user_id
+        if role == 'technician' or (role == 'user' and not is_solicitante):
+            raise PermissionDenied('Solo el solicitante, area_admin o super_admin pueden cerrar el ticket.')
+
+        if hd.estado != 'resuelto':
+            raise ValidationError({'estado': f'Solo se puede cerrar un ticket resuelto. Estado actual: {hd.estado}'})
+
+        hd.estado = 'cerrado'
+        hd.save(update_fields=['estado', 'updated_at'])
         return Response(HelpDeskSerializer(hd).data)
 
 

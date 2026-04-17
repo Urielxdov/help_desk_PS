@@ -36,7 +36,7 @@ class HelpDeskSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'folio', 'requester_id', 'assignee_id',
             'service', 'service_name', 'service_client_close',
-            'origin', 'priority', 'status',
+            'origin', 'priority', 'impact', 'status',
             'problem_description', 'solution_description',
             'assigned_at', 'due_date', 'resolved_at',
             'estimated_hours', 'attachments', 'created_at', 'updated_at',
@@ -78,3 +78,7 @@ class HelpDeskAssignSerializer(serializers.Serializer):
     """Validates fields for the /assign/ endpoint."""
     assignee_id = serializers.IntegerField()
     due_date = serializers.DateTimeField(required=False, allow_null=True)
+    impact = serializers.ChoiceField(
+        choices=['individual', 'area', 'company'],
+        required=False,
+    )

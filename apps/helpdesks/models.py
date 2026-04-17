@@ -47,6 +47,12 @@ VALID_TRANSITIONS = {
     'closed':      [],
 }
 
+IMPACT_CHOICES = [
+    ('individual', 'Individual'),
+    ('area', 'Area'),
+    ('company', 'Company'),
+]
+
 ATTACHMENT_TYPE_CHOICES = [
     ('file', 'File'),
     ('url', 'URL'),
@@ -80,6 +86,7 @@ class HelpDesk(models.Model):
     assigned_at = models.DateTimeField(null=True, blank=True)
     due_date = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
+    impact = models.CharField(max_length=10, choices=IMPACT_CHOICES, default='individual')
     estimated_hours = models.PositiveIntegerField(help_text='Hours')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

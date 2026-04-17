@@ -103,7 +103,9 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
         hd.assigned_at = timezone.now()
         if serializer.validated_data.get('due_date'):
             hd.due_date = serializer.validated_data['due_date']
-        hd.save(update_fields=['assignee_id', 'assigned_at', 'due_date', 'updated_at'])
+        if serializer.validated_data.get('impact'):
+            hd.impact = serializer.validated_data['impact']
+        hd.save(update_fields=['assignee_id', 'assigned_at', 'due_date', 'impact', 'updated_at'])
         return Response(HelpDeskSerializer(hd).data)
 
     @action(detail=True, methods=['patch'], url_path='resolve',

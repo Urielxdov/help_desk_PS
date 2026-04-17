@@ -18,6 +18,10 @@ class TechnicianProfileViewSet(
     permission_classes = [IsAreaAdmin]
     queryset = TechnicianProfile.objects.select_related('department').all()
 
+    def create(self, request, *args, **kwargs):
+        print(f'[TechnicianProfile] role={getattr(request.user, "role", None)} user_id={getattr(request.user, "user_id", None)} data={request.data}')
+        return super().create(request, *args, **kwargs)
+
 
 class SLAConfigViewSet(
     mixins.ListModelMixin,

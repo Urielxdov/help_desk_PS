@@ -1,87 +1,86 @@
 """
 Modelos del dominio de Help Desk.
 
-Un HelpDesk representa un ticket de soporte iniciado por un usuario del sistema
-externo. Atraviesa un ciclo de vida controlado (ver VALID_TRANSITIONS) y puede
-llevar adjuntos y comentarios asociados.
+A HelpDesk represents a support ticket initiated by a user of the external system.
+It traverses a controlled lifecycle (see VALID_TRANSITIONS) and can carry
+attachments and comments.
 
-Dependencias internas: apps.catalog (Service)
+Internal dependencies: apps.catalog (Service)
 """
 from django.db import models
 from apps.catalog.models import Service
 
-ORIGEN_CHOICES = [
+ORIGIN_CHOICES = [
     ('error', 'Error'),
-    ('solicitud', 'Solicitud'),
-    ('consulta', 'Consulta'),
-    ('mantenimiento', 'Mantenimiento'),
+    ('request', 'Request'),
+    ('inquiry', 'Inquiry'),
+    ('maintenance', 'Maintenance'),
 ]
 
-PRIORIDAD_CHOICES = [
-    ('baja', 'Baja'),
-    ('media', 'Media'),
-    ('alta', 'Alta'),
-    ('critica', 'Crítica'),
+PRIORITY_CHOICES = [
+    ('low', 'Low'),
+    ('medium', 'Medium'),
+    ('high', 'High'),
+    ('critical', 'Critical'),
 ]
 
-ESTADO_CHOICES = [
-    ('abierto', 'Abierto'),
-    ('en_progreso', 'En progreso'),
-    ('en_espera', 'En espera'),
-    ('resuelto', 'Resuelto'),
-    ('cerrado', 'Cerrado'),
+STATUS_CHOICES = [
+    ('open', 'Open'),
+    ('in_progress', 'In Progress'),
+    ('on_hold', 'On Hold'),
+    ('resolved', 'Resolved'),
+    ('closed', 'Closed'),
 ]
 
-# Máquina de estados del ciclo de vida de un ticket.
-# El flujo normal es: abierto → en_progreso → resuelto → cerrado.
-# en_espera permite pausar un ticket (ej. esperando respuesta del usuario)
-# y retomarlo sin perder el historial de progreso.
-# cerrado es estado terminal — un ticket cerrado no puede reabrirse.
-# Las transiciones se validan en la vista (no en el modelo) para mantener
-# la lógica de negocio centralizada y testeable en un solo lugar.
+# Ticket lifecycle state machine.
+# Normal flow: open → in_progress → resolved → closed.
+# on_hold allows pausing a ticket (e.g. waiting for user response)
+# and resuming it without losing progress history.
+# closed is a terminal state — a closed ticket cannot be reopened.
+# Transitions are validated in the view (not the model) to keep
+# business logic centralized and testable in one place.
 VALID_TRANSITIONS = {
-    'abierto':     ['en_progreso'],
-    'en_progreso': ['en_espera', 'resuelto'],
-    'en_espera':   ['en_progreso', 'resuelto'],
-    'resuelto':    ['cerrado'],
-    'cerrado':     [],
+    'open':        ['in_progress'],
+    'in_progress': ['on_hold', 'resolved'],
+    'on_hold':     ['in_progress', 'resolved'],
+    'resolved':    ['closed'],
+    'closed':      [],
 }
 
-TIPO_ADJUNTO_CHOICES = [
-    ('archivo', 'Archivo'),
+ATTACHMENT_TYPE_CHOICES = [
+    ('file', 'File'),
     ('url', 'URL'),
 ]
 
 
 class HelpDesk(models.Model):
     """
-    Ticket de soporte técnico. Entidad central del sistema.
+    Support ticket. Central entity of the system.
 
-    El folio (ej. HD-000001) es el identificador visible para el usuario final.
-    Se usa en correos, reportes y seguimiento operativo por teléfono, por eso
-    es incremental y legible — no un UUID. Ver método save().
+    The folio (e.g. HD-000001) is the visible identifier for the end user.
+    Used in emails, reports and phone follow-up — incremental and readable,
+    not a UUID. See save().
 
-    solicitante_id y responsable_id son IDs del sistema externo de usuarios.
-    No hay FK a una tabla local porque la gestión de identidad es
-    responsabilidad del sistema externo; este servicio solo almacena la
-    referencia numérica.
+    requester_id and assignee_id are IDs from the external user system.
+    No FK to a local table because identity management is the external
+    system's responsibility; this service only stores the numeric reference.
 
-    tiempo_estimado se hereda de service.tiempo_estimado_default al crear
-    el ticket si el solicitante no especifica uno. Ver HelpDeskCreateSerializer.
+    estimated_hours is inherited from service.estimated_hours at ticket
+    creation if the requester does not specify one. See HelpDeskCreateSerializer.
     """
     folio = models.CharField(max_length=20, unique=True, blank=True)
-    solicitante_id = models.IntegerField(null=True, blank=True, db_index=True)
-    responsable_id = models.IntegerField(null=True, blank=True, db_index=True)
+    requester_id = models.IntegerField(null=True, blank=True, db_index=True)
+    assignee_id = models.IntegerField(null=True, blank=True, db_index=True)
     service = models.ForeignKey(Service, on_delete=models.PROTECT, related_name='helpdesks')
-    origen = models.CharField(max_length=20, choices=ORIGEN_CHOICES)
-    prioridad = models.CharField(max_length=10, choices=PRIORIDAD_CHOICES)
-    estado = models.CharField(max_length=15, choices=ESTADO_CHOICES, default='abierto', db_index=True)
-    descripcion_problema = models.TextField()
-    descripcion_solucion = models.TextField(null=True, blank=True)
-    fecha_asignacion = models.DateTimeField(null=True, blank=True)
-    fecha_compromiso = models.DateTimeField(null=True, blank=True)
-    fecha_efectividad = models.DateTimeField(null=True, blank=True)
-    tiempo_estimado = models.PositiveIntegerField(help_text='Horas')
+    origin = models.CharField(max_length=20, choices=ORIGIN_CHOICES)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='open', db_index=True)
+    problem_description = models.TextField()
+    solution_description = models.TextField(null=True, blank=True)
+    assigned_at = models.DateTimeField(null=True, blank=True)
+    due_date = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    estimated_hours = models.PositiveIntegerField(help_text='Hours')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -90,11 +89,9 @@ class HelpDesk(models.Model):
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        # El folio depende del PK, que solo existe después del primer INSERT.
-        # Por eso se requieren dos escrituras: la primera genera el PK,
-        # la segunda persiste el folio derivado de ese PK.
-        # update_fields=['folio'] evita una actualización innecesaria de
-        # todos los campos en ese segundo guardado.
+        # The folio depends on the PK, which only exists after the first INSERT.
+        # Two writes are required: the first generates the PK,
+        # the second persists the folio derived from that PK.
         super().save(*args, **kwargs)
         if not self.folio:
             self.folio = f'HD-{self.pk:06d}'
@@ -106,19 +103,19 @@ class HelpDesk(models.Model):
 
 class HDAttachment(models.Model):
     """
-    Adjunto asociado a un ticket. Soporta dos modos de almacenamiento:
-    - tipo='archivo': el archivo se persiste físicamente vía FileStorage;
-      valor almacena la ruta interna retornada por storage.save().
-    - tipo='url': referencia a un recurso externo; valor almacena la URL.
+    Attachment linked to a ticket. Supports two storage modes:
+    - type='file': the file is physically persisted via FileStorage;
+      value stores the internal path returned by storage.save().
+    - type='url': reference to an external resource; value stores the URL.
 
-    El almacenamiento físico está desacoplado del modelo en storage.py,
-    lo que permite migrar de almacenamiento local a S3 o Azure sin
-    modificar este modelo ni las vistas.
+    Physical storage is decoupled from the model in storage.py,
+    allowing migration from local storage to S3 or Azure without
+    modifying this model or the views.
     """
     help_desk = models.ForeignKey(HelpDesk, on_delete=models.CASCADE, related_name='attachments')
-    tipo = models.CharField(max_length=10, choices=TIPO_ADJUNTO_CHOICES)
-    nombre = models.CharField(max_length=200)
-    valor = models.TextField(help_text='Ruta del archivo o URL')
+    type = models.CharField(max_length=10, choices=ATTACHMENT_TYPE_CHOICES)
+    name = models.CharField(max_length=200)
+    value = models.TextField(help_text='File path or URL')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -126,25 +123,25 @@ class HDAttachment(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.help_desk.folio} — {self.nombre}'
+        return f'{self.help_desk.folio} — {self.name}'
 
 
 class HDComment(models.Model):
     """
-    Comentario en un ticket. Puede ser público o interno al equipo de TI.
+    Comment on a ticket. Can be public or internal to the IT team.
 
-    Los comentarios con es_interno=True son notas internas del equipo técnico
-    que no deben mostrarse a quien tiene el rol 'user'. El filtrado se aplica
-    en HDCommentViewSet.get_queryset() (capa de vista), no aquí, para que el
-    modelo no asuma el contexto de autenticación.
+    Comments with is_internal=True are internal notes from the technical team
+    that should not be shown to users with the 'user' role. Filtering is applied
+    in HDCommentViewSet.get_queryset() (view layer), not here, so the model
+    does not assume the authentication context.
 
-    autor_id es el ID del sistema externo; puede ser None si el comentario
-    fue creado por un proceso automatizado o por un usuario anónimo.
+    author_id is the external system ID; can be None if the comment was
+    created by an automated process or anonymous user.
     """
     help_desk = models.ForeignKey(HelpDesk, on_delete=models.CASCADE, related_name='comments')
-    autor_id = models.IntegerField(null=True, blank=True)
-    contenido = models.TextField()
-    es_interno = models.BooleanField(default=False, help_text='Solo visible para TI')
+    author_id = models.IntegerField(null=True, blank=True)
+    content = models.TextField()
+    is_internal = models.BooleanField(default=False, help_text='Only visible to IT')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -152,4 +149,4 @@ class HDComment(models.Model):
         ordering = ['created_at']
 
     def __str__(self):
-        return f'{self.help_desk.folio} — comentario {self.pk}'
+        return f'{self.help_desk.folio} — comment {self.pk}'

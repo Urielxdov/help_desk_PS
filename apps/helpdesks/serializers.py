@@ -1,12 +1,12 @@
 """
 Serializers del módulo de Help Desk.
 
-Se usan dos serializers separados para HelpDesk:
-- HelpDeskCreateSerializer: solo para escritura en POST /helpdesks/. Expone
-  únicamente los campos que el solicitante puede proporcionar al crear.
-- HelpDeskSerializer: para lectura y como respuesta en todos los endpoints.
-  Estado, fechas de control y adjuntos son read-only porque solo se modifican
-  a través de endpoints dedicados que aplican validaciones de negocio.
+Two separate serializers are used for HelpDesk:
+- HelpDeskCreateSerializer: write-only for POST /helpdesks/. Exposes only
+  the fields the requester can provide at creation time.
+- HelpDeskSerializer: for reading and as response in all endpoints.
+  Status, control dates and attachments are read-only because they are only
+  modified through dedicated endpoints that apply business validations.
 """
 from rest_framework import serializers
 from .models import HelpDesk, HDAttachment, HDComment
@@ -15,65 +15,66 @@ from .models import HelpDesk, HDAttachment, HDComment
 class HDAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = HDAttachment
-        fields = ['id', 'tipo', 'nombre', 'valor', 'created_at']
+        fields = ['id', 'type', 'name', 'value', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
 class HDCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = HDComment
-        fields = ['id', 'autor_id', 'contenido', 'es_interno', 'created_at']
-        read_only_fields = ['id', 'autor_id', 'created_at']
+        fields = ['id', 'author_id', 'content', 'is_internal', 'created_at']
+        read_only_fields = ['id', 'author_id', 'created_at']
 
 
 class HelpDeskSerializer(serializers.ModelSerializer):
     attachments = HDAttachmentSerializer(many=True, read_only=True)
-    service_nombre = serializers.CharField(source='service.nombre', read_only=True)
+    service_name = serializers.CharField(source='service.name', read_only=True)
+    service_client_close = serializers.BooleanField(source='service.client_close', read_only=True)
 
     class Meta:
         model = HelpDesk
         fields = [
-            'id', 'folio', 'solicitante_id', 'responsable_id',
-            'service', 'service_nombre', 'origen', 'prioridad', 'estado',
-            'descripcion_problema', 'descripcion_solucion',
-            'fecha_asignacion', 'fecha_compromiso', 'fecha_efectividad',
-            'tiempo_estimado', 'attachments', 'created_at', 'updated_at',
+            'id', 'folio', 'requester_id', 'assignee_id',
+            'service', 'service_name', 'service_client_close',
+            'origin', 'priority', 'status',
+            'problem_description', 'solution_description',
+            'assigned_at', 'due_date', 'resolved_at',
+            'estimated_hours', 'attachments', 'created_at', 'updated_at',
         ]
         read_only_fields = [
-            'id', 'folio', 'solicitante_id', 'responsable_id', 'estado',
-            'fecha_asignacion', 'fecha_efectividad', 'service_nombre',
+            'id', 'folio', 'requester_id', 'assignee_id', 'status',
+            'assigned_at', 'resolved_at', 'service_name',
             'attachments', 'created_at', 'updated_at',
         ]
 
 
 class HelpDeskCreateSerializer(serializers.ModelSerializer):
     """
-    Serializer de escritura exclusivo para POST /helpdesks/.
+    Write serializer exclusive to POST /helpdesks/.
 
-    tiempo_estimado es opcional: si no se provee en el body, se hereda del campo
-    tiempo_estimado_default del servicio seleccionado. Esta herencia permite que
-    el área de TI configure tiempos estándar por servicio sin forzar al solicitante
-    a conocerlos.
+    estimated_hours is optional: if not provided in the body, it is inherited
+    from the selected service's estimated_hours field. This allows IT to configure
+    standard times per service without forcing the requester to know them.
 
-    fecha_compromiso no se expone aquí — es responsabilidad del area_admin
-    al asignar el ticket vía el endpoint /assign/.
+    due_date is not exposed here — it is the area_admin's responsibility
+    when assigning the ticket via the /assign/ endpoint.
     """
 
     class Meta:
         model = HelpDesk
         fields = [
-            'service', 'origen', 'prioridad', 'descripcion_problema',
-            'tiempo_estimado',
+            'service', 'origin', 'priority', 'problem_description',
+            'estimated_hours',
         ]
-        extra_kwargs = {'tiempo_estimado': {'required': False}}
+        extra_kwargs = {'estimated_hours': {'required': False}}
 
     def validate(self, attrs):
-        if 'tiempo_estimado' not in attrs:
-            attrs['tiempo_estimado'] = attrs['service'].tiempo_estimado_default
+        if 'estimated_hours' not in attrs:
+            attrs['estimated_hours'] = attrs['service'].estimated_hours
         return attrs
 
 
 class HelpDeskAssignSerializer(serializers.Serializer):
-    """Valida los campos del endpoint /assign/."""
-    responsable_id = serializers.IntegerField()
-    fecha_compromiso = serializers.DateTimeField(required=False, allow_null=True)
+    """Validates fields for the /assign/ endpoint."""
+    assignee_id = serializers.IntegerField()
+    due_date = serializers.DateTimeField(required=False, allow_null=True)

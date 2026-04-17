@@ -1,14 +1,13 @@
 """
 Vistas del módulo de Help Desk.
 
-Contiene tres ViewSets con responsabilidades separadas:
-- HelpDeskViewSet: ciclo de vida completo del ticket (crear, listar, cambiar
-  estado, asignar, resolver).
-- HDAttachmentViewSet: gestión de archivos y URLs adjuntos a un ticket.
-- HDCommentViewSet: comentarios públicos e internos de un ticket.
+Three ViewSets with separate responsibilities:
+- HelpDeskViewSet: full ticket lifecycle (create, list, change status, assign, resolve, close).
+- HDAttachmentViewSet: file and URL attachments for a ticket.
+- HDCommentViewSet: public and internal comments on a ticket.
 
-La visibilidad de los tickets en el listado es una regla de seguridad:
-cada rol solo accede a los tickets que le corresponden (ver get_queryset).
+Ticket visibility in the list is a security rule:
+each role only accesses the tickets that belong to them (see get_queryset).
 """
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -38,23 +37,22 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
     serializer_class = HelpDeskSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['estado', 'prioridad', 'service', 'responsable_id']
+    filterset_fields = ['status', 'priority', 'service', 'assignee_id']
 
     def get_queryset(self):
-        # La visibilidad es una restricción de seguridad, no solo de UX.
-        # Garantiza que un 'user' no pueda ver tickets de otros usuarios
-        # aunque conozca el ID directamente. Un 'technician' solo accede
-        # a los que le fueron asignados. Los roles admin ven todo para
-        # gestión, auditoría y soporte de nivel superior.
+        # Visibility is a security constraint, not just UX.
+        # Ensures a 'user' cannot see other users' tickets even if they know the ID.
+        # A 'technician' only accesses tickets assigned to them.
+        # Admin roles see all for management, auditing and escalation.
         user = self.request.user
         role = getattr(user, 'role', None)
         qs = HelpDesk.objects.select_related('service__category__department').prefetch_related('attachments')
 
         if role == 'user':
-            return qs.filter(solicitante_id=user.user_id)
+            return qs.filter(requester_id=user.user_id)
         if role == 'technician':
-            return qs.filter(responsable_id=user.user_id)
-        return qs  # area_admin, super_admin ven todos
+            return qs.filter(assignee_id=user.user_id)
+        return qs  # area_admin, super_admin see all
 
     def list(self, request):
         qs = self.filter_queryset(self.get_queryset())
@@ -64,11 +62,11 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
         return Response(HelpDeskSerializer(qs, many=True).data)
 
     def create(self, request):
-        # solicitante_id se extrae del token, no del body, para evitar que
-        # un usuario pueda abrir tickets en nombre de otro.
+        # requester_id is extracted from the token, not the body, to prevent
+        # a user from opening tickets on behalf of another user.
         serializer = HelpDeskCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        hd = serializer.save(solicitante_id=getattr(request.user, 'user_id', None))
+        hd = serializer.save(requester_id=getattr(request.user, 'user_id', None))
         return Response(HelpDeskSerializer(hd).data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk=None):
@@ -78,92 +76,54 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=['patch'], url_path='status',
             permission_classes=[IsTechnicianOrAdmin])
     def change_status(self, request, pk=None):
-        """
-        Cambia el estado de un ticket validando que la transición sea permitida.
-
-        Las transiciones válidas están definidas en VALID_TRANSITIONS (models.py).
-        Este endpoint cubre cambios de estado genéricos (ej. abierto → en_progreso).
-        Para resolver un ticket usa /resolve/, que exige descripcion_solucion.
-
-        Parámetros (body): estado — nuevo estado deseado.
-        Lanza ValidationError si la transición no está permitida.
-        """
         hd = get_object_or_404(self.get_queryset(), pk=pk)
-        new_status = request.data.get('estado')
+        new_status = request.data.get('status')
 
-        if new_status not in VALID_TRANSITIONS.get(hd.estado, []):
+        if new_status not in VALID_TRANSITIONS.get(hd.status, []):
             raise ValidationError(
-                {'estado': f'Transición no permitida: {hd.estado} → {new_status}. '
-                           f'Opciones válidas: {VALID_TRANSITIONS[hd.estado]}'}
+                {'status': f'Transition not allowed: {hd.status} → {new_status}. '
+                           f'Valid options: {VALID_TRANSITIONS[hd.status]}'}
             )
 
-        if getattr(request.user, 'role', None) == 'technician' and new_status in ('resuelto', 'cerrado'):
-            raise PermissionDenied('Los técnicos no pueden marcar como resuelto o cerrado desde este endpoint.')
+        if getattr(request.user, 'role', None) == 'technician' and new_status in ('resolved', 'closed'):
+            raise PermissionDenied('Technicians cannot mark tickets as resolved or closed from this endpoint.')
 
-        hd.estado = new_status
-        hd.save(update_fields=['estado', 'updated_at'])
+        hd.status = new_status
+        hd.save(update_fields=['status', 'updated_at'])
         return Response(HelpDeskSerializer(hd).data)
 
     @action(detail=True, methods=['patch'], url_path='assign',
             permission_classes=[IsAreaAdmin])
     def assign(self, request, pk=None):
-        """
-        Asigna un técnico a un ticket y registra la fecha de asignación.
-
-        fecha_asignacion se establece automáticamente al momento de la llamada
-        para generar un registro de auditoría preciso — no es configurable por
-        el cliente. fecha_compromiso es opcional: el área puede comprometerse
-        a una fecha límite o dejarlo sin definir.
-
-        Parámetros (body):
-            responsable_id: ID del técnico en el sistema externo.
-            fecha_compromiso (opcional): fecha límite de resolución (ISO 8601).
-        """
         hd = get_object_or_404(self.get_queryset(), pk=pk)
         serializer = HelpDeskAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        hd.responsable_id = serializer.validated_data['responsable_id']
-        hd.fecha_asignacion = timezone.now()
-        if serializer.validated_data.get('fecha_compromiso'):
-            hd.fecha_compromiso = serializer.validated_data['fecha_compromiso']
-        hd.save(update_fields=['responsable_id', 'fecha_asignacion', 'fecha_compromiso', 'updated_at'])
+        hd.assignee_id = serializer.validated_data['assignee_id']
+        hd.assigned_at = timezone.now()
+        if serializer.validated_data.get('due_date'):
+            hd.due_date = serializer.validated_data['due_date']
+        hd.save(update_fields=['assignee_id', 'assigned_at', 'due_date', 'updated_at'])
         return Response(HelpDeskSerializer(hd).data)
 
     @action(detail=True, methods=['patch'], url_path='resolve',
             permission_classes=[IsTechnicianOrAdmin])
     def resolve(self, request, pk=None):
-        """
-        Marca el ticket como resuelto y registra la solución aplicada.
-
-        descripcion_solucion es nullable en el modelo para preservar registros
-        históricos sin solución documentada, pero al resolver vía este endpoint
-        se exige para garantizar trazabilidad operativa — los tickets resueltos
-        deben dejar constancia de qué se hizo.
-
-        fecha_efectividad se registra automáticamente al resolver para calcular
-        tiempos reales de atención en reportes y SLAs.
-
-        Parámetros (body):
-            descripcion_solucion: descripción de la acción tomada (obligatorio).
-        Lanza ValidationError si el ticket no está en_progreso o en_espera,
-        o si descripcion_solucion está vacía.
-        """
         hd = get_object_or_404(self.get_queryset(), pk=pk)
 
-        if hd.estado not in ('en_progreso', 'en_espera', 'resuelto'):
+        if hd.status not in ('in_progress', 'on_hold', 'resolved'):
             raise ValidationError(
-                {'estado': f'Solo se puede resolver desde en_progreso o en_espera. Estado actual: {hd.estado}'}
+                {'status': f'Can only resolve from in_progress or on_hold. Current status: {hd.status}'}
             )
 
-        descripcion_solucion = request.data.get('descripcion_solucion', '').strip()
-        if not descripcion_solucion:
-            raise ValidationError({'descripcion_solucion': 'Este campo es obligatorio para resolver un HD.'})
+        solution_description = request.data.get('solution_description', '').strip()
+        if not solution_description:
+            raise ValidationError({'solution_description': 'This field is required to resolve a ticket.'})
 
-        hd.estado = 'resuelto'
-        hd.descripcion_solucion = descripcion_solucion
-        hd.fecha_efectividad = timezone.now()
-        hd.save(update_fields=['estado', 'descripcion_solucion', 'fecha_efectividad', 'updated_at'])
+        hd.status = 'resolved'
+        hd.solution_description = solution_description
+        hd.resolved_at = timezone.now()
+        hd.save(update_fields=['status', 'solution_description', 'resolved_at', 'updated_at'])
         return Response(HelpDeskSerializer(hd).data)
 
     @action(detail=True, methods=['patch'], url_path='close',
@@ -172,22 +132,22 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
         hd = get_object_or_404(self.get_queryset(), pk=pk)
 
         role = getattr(request.user, 'role', None)
-        is_solicitante = hd.solicitante_id == request.user.user_id
+        is_requester = hd.requester_id == request.user.user_id
 
         if role == 'technician':
-            raise PermissionDenied('Los técnicos no pueden cerrar tickets.')
+            raise PermissionDenied('Technicians cannot close tickets.')
 
         if role == 'user':
-            if not is_solicitante:
-                raise PermissionDenied('Solo el solicitante del ticket puede cerrarlo.')
+            if not is_requester:
+                raise PermissionDenied('Only the ticket requester can close it.')
             if not hd.service.client_close:
-                raise PermissionDenied('Este tipo de servicio no permite que el solicitante cierre el ticket.')
+                raise PermissionDenied('This service type does not allow the requester to close the ticket.')
 
-        if hd.estado != 'resuelto':
-            raise ValidationError({'estado': f'Solo se puede cerrar un ticket resuelto. Estado actual: {hd.estado}'})
+        if hd.status != 'resolved':
+            raise ValidationError({'status': f'Can only close a resolved ticket. Current status: {hd.status}'})
 
-        hd.estado = 'cerrado'
-        hd.save(update_fields=['estado', 'updated_at'])
+        hd.status = 'closed'
+        hd.save(update_fields=['status', 'updated_at'])
         return Response(HelpDeskSerializer(hd).data)
 
 
@@ -203,36 +163,36 @@ class HDAttachmentViewSet(
 
     def create(self, request, helpdesk_pk=None):
         hd = get_object_or_404(HelpDesk, pk=helpdesk_pk)
-        tipo = request.data.get('tipo')
-        nombre = request.data.get('nombre', '')
+        type_ = request.data.get('type')
+        name = request.data.get('name', '')
 
-        if tipo == 'archivo':
-            file = request.FILES.get('archivo')
+        if type_ == 'file':
+            file = request.FILES.get('file')
             if not file:
-                raise ValidationError({'archivo': 'Se requiere un archivo cuando tipo=archivo.'})
+                raise ValidationError({'file': 'A file is required when type=file.'})
             if file.size > MAX_UPLOAD_SIZE:
-                raise ValidationError({'archivo': f'El archivo supera el tamaño máximo de {MAX_UPLOAD_SIZE // (1024 * 1024)}MB.'})
+                raise ValidationError({'file': f'File exceeds the maximum size of {MAX_UPLOAD_SIZE // (1024 * 1024)}MB.'})
             storage = get_storage()
-            valor = storage.save(file, file.name)
-        elif tipo == 'url':
-            valor = request.data.get('valor', '').strip()
-            if not valor:
-                raise ValidationError({'valor': 'Se requiere una URL cuando tipo=url.'})
+            value = storage.save(file, file.name)
+        elif type_ == 'url':
+            value = request.data.get('value', '').strip()
+            if not value:
+                raise ValidationError({'value': 'A URL is required when type=url.'})
         else:
-            raise ValidationError({'tipo': 'Debe ser "archivo" o "url".'})
+            raise ValidationError({'type': 'Must be "file" or "url".'})
 
         attachment = HDAttachment.objects.create(
-            help_desk=hd, tipo=tipo, nombre=nombre, valor=valor
+            help_desk=hd, type=type_, name=name, value=value
         )
         return Response(HDAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, helpdesk_pk=None, pk=None):
-        # Solo los adjuntos tipo 'archivo' tienen un archivo físico que limpiar.
-        # Las URLs son referencias externas — borrar el registro no requiere
-        # ninguna operación sobre storage.
+        # Only 'file' attachments have a physical file to clean up.
+        # URLs are external references — deleting the record requires
+        # no storage operation.
         attachment = get_object_or_404(self.get_queryset(), pk=pk)
-        if attachment.tipo == 'archivo':
-            get_storage().delete(attachment.valor)
+        if attachment.type == 'file':
+            get_storage().delete(attachment.value)
         attachment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -247,17 +207,17 @@ class HDCommentViewSet(
     pagination_class = None
 
     def get_queryset(self):
-        # Los comentarios internos son notas del equipo de TI.
-        # El rol 'user' no debe verlos — se filtran aquí para que el listado
-        # y la serialización sean transparentes al tipo de comentario.
+        # Internal comments are IT team notes.
+        # The 'user' role must not see them — filtered here so the list
+        # and serialization are transparent to comment type.
         qs = HDComment.objects.filter(help_desk_id=self.kwargs['helpdesk_pk'])
         if getattr(self.request.user, 'role', None) == 'user':
-            qs = qs.filter(es_interno=False)
+            qs = qs.filter(is_internal=False)
         return qs
 
     def perform_create(self, serializer):
         hd = get_object_or_404(HelpDesk, pk=self.kwargs['helpdesk_pk'])
         serializer.save(
             help_desk=hd,
-            autor_id=getattr(self.request.user, 'user_id', None),
+            author_id=getattr(self.request.user, 'user_id', None),
         )

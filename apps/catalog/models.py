@@ -2,65 +2,65 @@
 Catálogo de servicios de soporte. Define la jerarquía:
     Department → ServiceCategory → Service
 
-Un Service es lo que el usuario selecciona al abrir un HelpDesk.
-Su campo tiempo_estimado_default se hereda por el ticket al momento de la
-creación si el solicitante no especifica uno explícito.
+A Service is what the user selects when opening a HelpDesk ticket.
+The estimated_hours field is inherited by the ticket at creation time
+if the requester does not provide one explicitly.
 
-Las FKs usan PROTECT (no CASCADE) para evitar eliminar departamentos o
-categorías que ya tienen tickets históricos asociados a través de sus servicios.
+FKs use PROTECT (not CASCADE) to avoid deleting departments or
+categories that already have historical tickets linked through their services.
 """
 from django.db import models
 
 
 class Department(models.Model):
-    nombre = models.CharField(max_length=100)
-    descripcion = models.TextField(blank=True)
-    activo = models.BooleanField(default=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'catalog_department'
-        ordering = ['nombre']
+        ordering = ['name']
 
     def __str__(self):
-        return self.nombre
+        return self.name
 
 
 class ServiceCategory(models.Model):
-    nombre = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
     department = models.ForeignKey(
         Department,
         on_delete=models.PROTECT,
         related_name='categories',
     )
-    activo = models.BooleanField(default=True)
+    active = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'catalog_servicecategory'
-        ordering = ['nombre']
+        ordering = ['name']
 
     def __str__(self):
-        return f'{self.department.nombre} / {self.nombre}'
+        return f'{self.department.name} / {self.name}'
 
 
 class Service(models.Model):
-    nombre = models.CharField(max_length=100)
-    descripcion = models.TextField(blank=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
     category = models.ForeignKey(
         ServiceCategory,
         on_delete=models.PROTECT,
         related_name='services',
     )
-    tiempo_estimado_default = models.PositiveIntegerField(
-        help_text='Tiempo estimado en horas',
+    estimated_hours = models.PositiveIntegerField(
+        help_text='Estimated time in hours',
     )
-    activo = models.BooleanField(default=True)
-    client_close = models.BooleanField(default=True, help_text='Permite que el solicitante cierre el ticket')
+    active = models.BooleanField(default=True)
+    client_close = models.BooleanField(default=True, help_text='Allow requester to close the ticket')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'catalog_service'
-        ordering = ['nombre']
+        ordering = ['name']
 
     def __str__(self):
-        return self.nombre
+        return self.name

@@ -1,12 +1,12 @@
 """
 Vistas del catálogo de servicios. Gestiona la jerarquía Department → ServiceCategory → Service.
 
-Los endpoints de lectura están abiertos a cualquier usuario autenticado para que
-puedan navegar el catálogo al crear un ticket. Los de escritura están restringidos
-porque los cambios en el catálogo afectan a toda la operación.
+Read endpoints are open to any authenticated user so they can browse
+the catalog when creating a ticket. Write endpoints are restricted
+because catalog changes affect the entire operation.
 
-ServiceCategory y Service se inactivan en lugar de eliminarse (soft-delete vía
-el flag 'activo') para preservar la integridad referencial con tickets históricos.
+ServiceCategory and Service are deactivated instead of deleted (soft-delete via
+the 'active' flag) to preserve referential integrity with historical tickets.
 """
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, mixins
@@ -21,14 +21,14 @@ from .permissions import IsAreaAdmin, IsSuperAdmin
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     """
-    Gestión de departamentos. Solo super_admin puede crear o modificar.
+    Department management. Only super_admin can create or modify.
 
-    Los departamentos reflejan la estructura organizacional de la empresa.
-    Un cambio incorrecto afecta todo el catálogo de servicios, por eso la
-    escritura requiere el rol más alto. DELETE está excluido de http_method_names
-    porque los departamentos con servicios históricos no pueden eliminarse (PROTECT).
+    Departments reflect the organizational structure of the company.
+    An incorrect change affects the entire service catalog, so writes
+    require the highest role. DELETE is excluded from http_method_names
+    because departments with historical services cannot be deleted (PROTECT).
     """
-    queryset = Department.objects.filter(activo=True)
+    queryset = Department.objects.filter(active=True)
     serializer_class = DepartmentSerializer
     http_method_names = ['get', 'post', 'put', 'patch', 'head', 'options']
 
@@ -40,7 +40,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='categories', permission_classes=[IsAuthenticated])
     def categories(self, request, pk=None):
         department = self.get_object()
-        qs = ServiceCategory.objects.select_related('department').filter(department=department, activo=True)
+        qs = ServiceCategory.objects.select_related('department').filter(department=department, active=True)
         serializer = ServiceCategorySerializer(qs, many=True)
         return Response(serializer.data)
 
@@ -48,7 +48,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     def services(self, request, pk=None):
         department = self.get_object()
         qs = Service.objects.select_related('category').filter(
-            category__department=department, activo=True
+            category__department=department, active=True
         )
         serializer = ServiceSerializer(qs, many=True)
         return Response(serializer.data)
@@ -60,14 +60,14 @@ class ServiceCategoryViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = ServiceCategory.objects.filter(activo=True)
+    queryset = ServiceCategory.objects.filter(active=True)
     serializer_class = ServiceCategorySerializer
     permission_classes = [IsAreaAdmin]
 
     @action(detail=True, methods=['get'], url_path='services', permission_classes=[IsAuthenticated])
     def services(self, request, pk=None):
         category = self.get_object()
-        qs = Service.objects.select_related('category').filter(category=category, activo=True)
+        qs = Service.objects.select_related('category').filter(category=category, active=True)
         serializer = ServiceSerializer(qs, many=True)
         return Response(serializer.data)
 
@@ -78,18 +78,18 @@ class ServiceViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = Service.objects.filter(activo=True)
+    queryset = Service.objects.filter(active=True)
     serializer_class = ServiceSerializer
     permission_classes = [IsAreaAdmin]
 
     @action(detail=True, methods=['patch'], url_path='toggle')
     def toggle(self, request, pk=None):
-        # Se invierte el flag 'activo' en lugar de eliminar el registro para
-        # preservar la referencia histórica en tickets existentes. Un DELETE
-        # fallaría por la FK con PROTECT en HelpDesk.service.
-        # Se usa get_object_or_404 sin filtro de activo para poder reactivar
-        # servicios que fueron previamente desactivados.
+        # The 'active' flag is inverted instead of deleting the record to
+        # preserve the historical reference in existing tickets. A DELETE
+        # would fail due to the PROTECT FK in HelpDesk.service.
+        # get_object_or_404 without active filter allows reactivating
+        # previously deactivated services.
         service = get_object_or_404(Service, pk=pk)
-        service.activo = not service.activo
-        service.save(update_fields=['activo'])
+        service.active = not service.active
+        service.save(update_fields=['active'])
         return Response(ServiceSerializer(service).data)

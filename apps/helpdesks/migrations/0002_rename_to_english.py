@@ -5,7 +5,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('helpdesks', '0001_initial'),
-        ('catalog', '0002_rename_to_english'),
+        ('catalog', '0003_rename_to_english'),
     ]
 
     operations = [

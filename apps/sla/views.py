@@ -20,6 +20,9 @@ class TechnicianProfileViewSet(
 
     def create(self, request, *args, **kwargs):
         print(f'[TechnicianProfile] role={getattr(request.user, "role", None)} user_id={getattr(request.user, "user_id", None)} data={request.data}')
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            print(f'[TechnicianProfile] validation errors={serializer.errors}')
         return super().create(request, *args, **kwargs)
 
 

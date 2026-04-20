@@ -71,6 +71,7 @@ class HelpDeskCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if 'estimated_hours' not in attrs:
             attrs['estimated_hours'] = attrs['service'].estimated_hours
+        attrs['impact'] = attrs['service'].impact
         return attrs
 
 

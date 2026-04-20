@@ -43,6 +43,13 @@ class ServiceCategory(models.Model):
         return f'{self.department.name} / {self.name}'
 
 
+IMPACT_CHOICES = [
+    ('individual', 'Individual'),
+    ('area', 'Area'),
+    ('company', 'Company'),
+]
+
+
 class Service(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
@@ -53,6 +60,12 @@ class Service(models.Model):
     )
     estimated_hours = models.PositiveIntegerField(
         help_text='Estimated time in hours',
+    )
+    impact = models.CharField(
+        max_length=10,
+        choices=IMPACT_CHOICES,
+        default='individual',
+        help_text='Nivel de impacto que hereda el ticket al crearse',
     )
     active = models.BooleanField(default=True)
     client_close = models.BooleanField(default=True, help_text='Allow requester to close the ticket')

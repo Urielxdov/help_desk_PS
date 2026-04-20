@@ -1,12 +1,13 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import HDAttachmentViewSet, HDCommentViewSet, HelpDeskViewSet
+from .views import HDAttachmentViewSet, HDCommentViewSet, HelpDeskViewSet, choices_view
 
 router = DefaultRouter()
 router.register('helpdesks', HelpDeskViewSet, basename='helpdesk')
 
 urlpatterns = router.urls + [
+    path('choices/', choices_view, name='choices'),
     path(
         'helpdesks/<int:helpdesk_pk>/attachments/',
         HDAttachmentViewSet.as_view({'post': 'create'}),

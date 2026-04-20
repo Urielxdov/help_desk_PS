@@ -10,6 +10,7 @@ Ticket visibility in the list is a security rule:
 each role only accesses the tickets that belong to them (see get_queryset).
 """
 from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view, permission_classes
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
@@ -19,7 +20,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.catalog.permissions import IsAreaAdmin
-from .models import VALID_TRANSITIONS, HDAttachment, HDComment, HelpDesk
+from .models import VALID_TRANSITIONS, HDAttachment, HDComment, HelpDesk, IMPACT_CHOICES, PRIORITY_CHOICES, ORIGIN_CHOICES, STATUS_CHOICES
 from .permissions import IsTechnicianOrAdmin
 from .serializers import (
     HDAttachmentSerializer,
@@ -31,6 +32,17 @@ from .serializers import (
 from .storage import get_storage
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def choices_view(request):
+    return Response({
+        'impact': [k for k, _ in IMPACT_CHOICES],
+        'priority': [k for k, _ in PRIORITY_CHOICES],
+        'origin': [k for k, _ in ORIGIN_CHOICES],
+        'status': [k for k, _ in STATUS_CHOICES],
+    })
 
 
 class HelpDeskViewSet(viewsets.GenericViewSet):

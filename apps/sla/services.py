@@ -2,6 +2,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.helpdesks.models import HelpDesk
+from config.business_hours import add_business_hours, is_business_hours
 from .models import SLAConfig, ServiceQueue, TechnicianProfile
 
 ACTIVE_STATUSES = ('open', 'in_progress', 'on_hold')
@@ -68,6 +69,9 @@ def _get_technician_hours(user_id):
 
 
 def try_assign(hd):
+    if not is_business_hours():
+        return False
+
     department = hd.service.category.department
     config = get_config(department)
     max_load = _config_value(config, 'max_load')
@@ -89,9 +93,12 @@ def try_assign(hd):
     available.sort(key=lambda x: x[0])
     chosen_user_id = available[0][1]
 
+    now = timezone.now()
     hd.assignee_id = chosen_user_id
-    hd.assigned_at = timezone.now()
-    hd.save(update_fields=['assignee_id', 'assigned_at', 'updated_at'])
+    hd.assigned_at = now
+    if not hd.due_date:
+        hd.due_date = add_business_hours(now, hd.estimated_hours)
+    hd.save(update_fields=['assignee_id', 'assigned_at', 'due_date', 'updated_at'])
     return True
 
 

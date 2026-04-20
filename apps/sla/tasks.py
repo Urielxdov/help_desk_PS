@@ -35,3 +35,16 @@ def recalculate_queue_scores():
     )
     for dept_id in department_ids:
         process_queue(dept_id)
+
+
+@shared_task
+def process_all_queues():
+    """Runs at business hours start (08:30 Mon-Fri) to assign tickets queued overnight or on weekends."""
+    department_ids = (
+        ServiceQueue.objects
+        .select_related('help_desk__service__category__department')
+        .values_list('help_desk__service__category__department_id', flat=True)
+        .distinct()
+    )
+    for dept_id in department_ids:
+        process_queue(dept_id)

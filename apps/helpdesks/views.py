@@ -12,6 +12,8 @@ each role only accesses the tickets that belong to them (see get_queryset).
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from django.utils import timezone
+
+from config.business_hours import add_business_hours
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -111,10 +113,10 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
         serializer = HelpDeskAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        now = timezone.now()
         hd.assignee_id = serializer.validated_data['assignee_id']
-        hd.assigned_at = timezone.now()
-        if serializer.validated_data.get('due_date'):
-            hd.due_date = serializer.validated_data['due_date']
+        hd.assigned_at = now
+        hd.due_date = serializer.validated_data.get('due_date') or add_business_hours(now, hd.estimated_hours)
         if serializer.validated_data.get('impact'):
             hd.impact = serializer.validated_data['impact']
         hd.save(update_fields=['assignee_id', 'assigned_at', 'due_date', 'impact', 'updated_at'])

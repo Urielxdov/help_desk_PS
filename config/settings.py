@@ -16,6 +16,8 @@ Decisiones de diseño:
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
@@ -98,5 +100,9 @@ CELERY_BEAT_SCHEDULE = {
     'recalculate-queue-scores': {
         'task': 'apps.sla.tasks.recalculate_queue_scores',
         'schedule': 900,  # every 15 minutes
+    },
+    'process-queue-business-start': {
+        'task': 'apps.sla.tasks.process_all_queues',
+        'schedule': crontab(hour=8, minute=30, day_of_week='1-5'),  # Mon-Fri 08:30
     },
 }

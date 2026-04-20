@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'apps.catalog',
     'apps.helpdesks',
     'apps.sla',
+    'apps.classifier',
 ]
 
 MIDDLEWARE = [
@@ -104,5 +105,9 @@ CELERY_BEAT_SCHEDULE = {
     'process-queue-business-start': {
         'task': 'apps.sla.tasks.process_all_queues',
         'schedule': crontab(hour=8, minute=30, day_of_week='1-5'),  # Mon-Fri 08:30
+    },
+    'train-classifier': {
+        'task': 'apps.classifier.tasks.train_classifier',
+        'schedule': crontab(hour=2, minute=0),  # diario a las 2am
     },
 }

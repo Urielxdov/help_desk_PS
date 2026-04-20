@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from django.utils import timezone
 
-from config.business_hours import add_business_hours
+from config.business_hours import calculate_due_date
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -116,7 +116,16 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
         now = timezone.now()
         hd.assignee_id = serializer.validated_data['assignee_id']
         hd.assigned_at = now
-        hd.due_date = serializer.validated_data.get('due_date') or add_business_hours(now, hd.estimated_hours)
+        if serializer.validated_data.get('due_date'):
+            hd.due_date = serializer.validated_data['due_date']
+        elif not hd.due_date:
+            from apps.sla.services import get_config, _config_value
+            config = get_config(hd.service.category.department)
+            hd.due_date = calculate_due_date(
+                now,
+                _config_value(config, 'resolution_time'),
+                _config_value(config, 'resolution_unit'),
+            )
         if serializer.validated_data.get('impact'):
             hd.impact = serializer.validated_data['impact']
         hd.save(update_fields=['assignee_id', 'assigned_at', 'due_date', 'impact', 'updated_at'])

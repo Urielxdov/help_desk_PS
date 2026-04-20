@@ -2,6 +2,8 @@ from datetime import time, timedelta
 
 from django.utils import timezone
 
+BUSINESS_HOURS_PER_DAY = 9.5
+
 BUSINESS_START = time(8, 30)
 BUSINESS_END = time(18, 0)
 
@@ -59,3 +61,22 @@ def add_business_hours(start, hours):
             local = _local_naive(next_business_start(end_of_day))
 
     return timezone.make_aware(local, timezone.get_current_timezone())
+
+
+def calculate_due_date(start, resolution_time, resolution_unit, accumulated_hours=0):
+    """
+    Calcula due_date según la unidad del departamento.
+
+    business_hours: suma horas acumuladas del técnico + resolution_time en horas hábiles.
+    calendar_hours: start + resolution_time horas calendario (sin considerar horario hábil).
+    calendar_days:  start + resolution_time días calendario.
+
+    accumulated_hours solo aplica en business_hours — representa la carga
+    actual del técnico asignado para dar una fecha comprometida más realista.
+    """
+    if resolution_unit == 'business_hours':
+        return add_business_hours(start, accumulated_hours + resolution_time)
+    elif resolution_unit == 'calendar_hours':
+        return start + timedelta(hours=resolution_time)
+    else:  # calendar_days
+        return start + timedelta(days=resolution_time)

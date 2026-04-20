@@ -19,6 +19,7 @@ class SLAConfigSerializer(serializers.ModelSerializer):
         model = SLAConfig
         fields = [
             'id', 'department', 'department_name', 'max_load',
+            'resolution_time', 'resolution_unit',
             'score_overdue',
             'score_company', 'score_area', 'score_individual',
             'score_critical', 'score_high', 'score_medium', 'score_low',

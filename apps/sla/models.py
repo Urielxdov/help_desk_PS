@@ -70,6 +70,22 @@ class SLAConfig(models.Model):
         help_text="Máximo de tickets simultáneos (estado open/in_progress/on_hold) que un técnico puede llevar"
     )
 
+    RESOLUTION_UNIT_CHOICES = [
+        ('business_hours', 'Horas hábiles'),
+        ('calendar_hours', 'Horas calendario'),
+        ('calendar_days', 'Días calendario'),
+    ]
+    resolution_time = models.PositiveIntegerField(
+        default=72,
+        help_text="Tiempo máximo para resolver un ticket según la unidad configurada"
+    )
+    resolution_unit = models.CharField(
+        max_length=20,
+        choices=RESOLUTION_UNIT_CHOICES,
+        default='business_hours',
+        help_text="Unidad en que se expresa resolution_time"
+    )
+
     # Urgency score weights — Puntajes base
     score_overdue = models.IntegerField(
         default=1000,

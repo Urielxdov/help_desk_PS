@@ -51,7 +51,7 @@ score_low        IntegerField (default=10)
 
 ### ServiceQueue
 ```
-help_desk      OneToOneField → helpdesks.HelpDesk
+help_desk      OneToOneField → helpdesks.HelpDesk 
 queued_at      DateTimeField (auto_now_add)
 urgency_score  IntegerField
 ```

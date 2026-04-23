@@ -88,7 +88,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'media'))
+
+# Storage configuration: different paths for server vs Docker
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')  # 'local' or 'docker'
+if ENVIRONMENT == 'docker':
+    MEDIA_ROOT = os.environ.get('MEDIA_ROOT_DOCKER', '/app/media')
+else:
+    MEDIA_ROOT = os.environ.get('MEDIA_ROOT_LOCAL', '/var/data/calidadpro/media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
@@ -111,3 +117,7 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=2, minute=0),  # diario a las 2am
     },
 }
+
+# Clasificador: máximo de feedbacks por usuario por día calendario.
+# Los que exceden se guardan con rate_limited=True y no influyen en el entrenamiento.
+CLASSIFIER_DAILY_FEEDBACK_LIMIT = int(os.environ.get('CLASSIFIER_DAILY_FEEDBACK_LIMIT', '20'))

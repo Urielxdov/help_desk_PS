@@ -1,10 +1,18 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import ServiceKeywordViewSet, classify_view, feedback_view, stats_view, train_view
+from .views import (
+    ServiceKeywordViewSet,
+    UserFeedbackProfileViewSet,
+    classify_view,
+    feedback_view,
+    stats_view,
+    train_view,
+)
 
 router = DefaultRouter()
 router.register('service-keywords', ServiceKeywordViewSet, basename='service-keyword')
+router.register('user-feedback-profiles', UserFeedbackProfileViewSet, basename='user-feedback-profile')
 
 urlpatterns = router.urls + [
     path('classify/', classify_view, name='classify'),

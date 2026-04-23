@@ -325,6 +325,21 @@ POST   /api/helpdesks/{id}/comments/
 
 ---
 
+## Alcances futuros
+
+### Panel de confianza de usuarios del clasificador
+
+El endpoint `GET /classify/user-feedback-profiles/` ya existe y está protegido por `area_admin`/`super_admin`. Devuelve `user_id`, `trust_score`, `flagged`, `feedback_count` y `rate_limited_count` por usuario.
+
+**Pendiente:** definir la pantalla frontend correspondiente. El bloqueador actual es que el perfil solo almacena `user_id` (entero del sistema externo) y no hay un contrato definido para obtener nombre/email del usuario a partir de ese ID. Una vez que ese contrato exista, hay dos opciones de implementación:
+
+- **Opción A:** guardar `user_name`/`user_email` en `UserFeedbackProfile` al crear el perfil (si el JWT los incluye).
+- **Opción B:** el frontend enriquece la lista llamando al sistema externo de usuarios con cada `user_id`.
+
+La pantalla sugerida es una tabla ordenada por riesgo descendente (`flagged` primero, luego `trust_score` asc, luego `rate_limited_count` desc) con acción de PATCH para ajustar `trust_score` y activar/desactivar `flagged`.
+
+---
+
 ## Criterio de terminado
 
 - [ ] Proyecto corriendo con `python manage.py runserver`.

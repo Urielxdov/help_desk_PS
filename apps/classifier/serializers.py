@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from .models import ClassificationFeedback, ServiceKeyword
+from .models import ClassificationFeedback, ServiceKeyword, UserFeedbackProfile
+from .services import normalize
 
 
 class ServiceKeywordSerializer(serializers.ModelSerializer):
@@ -10,6 +11,9 @@ class ServiceKeywordSerializer(serializers.ModelSerializer):
         model = ServiceKeyword
         fields = ['id', 'service', 'service_name', 'keyword', 'weight', 'created_at']
         read_only_fields = ['id', 'created_at', 'service_name']
+
+    def validate_keyword(self, value):
+        return normalize(value)
 
 
 class ClassifySerializer(serializers.Serializer):
@@ -22,9 +26,9 @@ class ClassificationFeedbackSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'problem_description',
             'suggested_service', 'chosen_service',
-            'accepted', 'created_at',
+            'accepted', 'rate_limited', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'rate_limited']
 
     def validate(self, attrs):
         suggested = attrs.get('suggested_service')
@@ -40,3 +44,18 @@ class ClassificationFeedbackSerializer(serializers.ModelSerializer):
                 {'accepted': 'Si chosen_service es igual a suggested_service, accepted debe ser True.'}
             )
         return attrs
+
+
+class UserFeedbackProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserFeedbackProfile
+        fields = [
+            'id', 'user_id', 'trust_score', 'flagged',
+            'feedback_count', 'rate_limited_count', 'updated_at',
+        ]
+        read_only_fields = ['id', 'user_id', 'feedback_count', 'rate_limited_count', 'updated_at']
+
+    def validate_trust_score(self, value):
+        if not 0.0 <= value <= 1.0:
+            raise serializers.ValidationError('Debe estar entre 0.0 y 1.0.')
+        return round(value, 4)

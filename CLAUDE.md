@@ -68,6 +68,27 @@ helpdesks  → catalog (FK a Service)
 ### HDAttachment — storage intercambiable
 `apps/helpdesks/storage.py` define la interfaz `FileStorage`. La implementación activa es `LocalFileStorage` (usa `default_storage` de Django). Para migrar a S3/Azure: crear nueva clase, cambiar `get_storage()`.
 
+### Almacenamiento de archivos — rutas persistentes
+El sistema soporta dos configuraciones via `.env`:
+
+**Para Docker (recomendado):**
+```env
+ENVIRONMENT=docker
+MEDIA_ROOT_DOCKER=/app/media
+```
+Los archivos se guardan en el volumen `media_data` definido en `docker-compose.yml`.
+
+**Para servidor físico:**
+```env
+ENVIRONMENT=local
+MEDIA_ROOT_LOCAL=/var/data/calidadpro/media
+```
+Asegúrate de que la carpeta existe y tiene permisos de escritura:
+```bash
+sudo mkdir -p /var/data/calidadpro/media
+sudo chown -R www-data:www-data /var/data/calidadpro/media
+```
+
 ## Endpoints
 
 | Método | Ruta | Permiso |

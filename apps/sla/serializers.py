@@ -23,6 +23,7 @@ class SLAConfigSerializer(serializers.ModelSerializer):
             'score_overdue',
             'score_company', 'score_area', 'score_individual',
             'score_critical', 'score_high', 'score_medium', 'score_low',
+            'incident_threshold',
         ]
         read_only_fields = ['id']
 

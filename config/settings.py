@@ -121,3 +121,7 @@ CELERY_BEAT_SCHEDULE = {
 # Clasificador: máximo de feedbacks por usuario por día calendario.
 # Los que exceden se guardan con rate_limited=True y no influyen en el entrenamiento.
 CLASSIFIER_DAILY_FEEDBACK_LIMIT = int(os.environ.get('CLASSIFIER_DAILY_FEEDBACK_LIMIT', '20'))
+
+# Monitoreo de incidentes: tickets activos del mismo servicio para considerarlo candidato.
+# Cada departamento puede sobreescribir este valor en su SLAConfig.incident_threshold.
+INCIDENT_CANDIDATE_THRESHOLD = int(os.environ.get('INCIDENT_CANDIDATE_THRESHOLD', '5'))

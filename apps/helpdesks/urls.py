@@ -1,10 +1,11 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import HDAttachmentViewSet, HDCommentViewSet, HelpDeskViewSet, choices_view
+from .views import HDAttachmentViewSet, HDCommentViewSet, HelpDeskViewSet, IncidentViewSet, choices_view
 
 router = DefaultRouter()
 router.register('helpdesks', HelpDeskViewSet, basename='helpdesk')
+router.register('helpdesks/incidents', IncidentViewSet, basename='incident')
 
 urlpatterns = router.urls + [
     path('choices/', choices_view, name='choices'),

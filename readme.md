@@ -240,55 +240,110 @@ abierto → en_progreso → en_espera → resuelto → cerrado
 ### Autenticación
 
 ```
-POST   /api/auth/token/             # Obtener JWT
-POST   /api/auth/token/refresh/     # Refrescar JWT
+POST   /api/auth/token/                              # Obtener JWT (desarrollo)
 ```
 
-### Catálogo — lectura (cualquier usuario autenticado)
+### Catálogo
 
 ```
-GET    /api/departments/
-GET    /api/departments/{id}/categories/
-GET    /api/categories/{id}/services/
-```
-
-### Catálogo — administración (area_admin / super_admin)
-
-```
-POST   /api/departments/                      # super_admin
-PUT    /api/departments/{id}/                 # super_admin
-
-POST   /api/service-categories/               # area_admin
-PUT    /api/service-categories/{id}/          # area_admin
-
-POST   /api/services/                         # area_admin
-PUT    /api/services/{id}/                    # area_admin
-PATCH  /api/services/{id}/toggle/             # area_admin
+GET    /api/departments/                             # auth
+POST   /api/departments/                             # super_admin
+GET    /api/departments/{id}/categories/             # auth
+POST   /api/service-categories/                      # area_admin
+PUT    /api/service-categories/{id}/                 # area_admin
+GET    /api/service-categories/{id}/services/        # auth
+POST   /api/services/                                # area_admin
+PUT    /api/services/{id}/                           # area_admin
+PATCH  /api/services/{id}/toggle/                    # area_admin
 ```
 
 ### Help Desks
 
-```
-GET    /api/helpdesks/                        # Lista según rol
-GET    /api/helpdesks/{id}/                   # Detalle
-POST   /api/helpdesks/                        # Crear HD (usuario)
-PATCH  /api/helpdesks/{id}/status/            # Cambiar estado (tecnico)
-PATCH  /api/helpdesks/{id}/assign/            # Asignar técnico (area_admin)
-PATCH  /api/helpdesks/{id}/resolve/           # Resolver HD (tecnico)
-```
-
-### Adjuntos
+Filtros disponibles: `?status=`, `?priority=`, `?service=`, `?assignee_id=`, `?department=`
 
 ```
-POST   /api/helpdesks/{id}/attachments/
-DELETE /api/helpdesks/{id}/attachments/{attachment_id}/
+GET    /api/helpdesks/                               # Lista según rol
+GET    /api/helpdesks/{id}/                          # Detalle
+POST   /api/helpdesks/                               # Crear HD
+PATCH  /api/helpdesks/{id}/status/                   # Cambiar estado (technician+)
+PATCH  /api/helpdesks/{id}/assign/                   # Asignar técnico (area_admin+)
+PATCH  /api/helpdesks/{id}/resolve/                  # Resolver (technician+)
+PATCH  /api/helpdesks/{id}/close/                    # Cerrar (requester / area_admin+)
+POST   /api/helpdesks/{id}/attachments/              # Subir adjunto
+DELETE /api/helpdesks/{id}/attachments/{aid}/        # Eliminar adjunto
+GET    /api/helpdesks/{id}/comments/                 # Ver comentarios
+POST   /api/helpdesks/{id}/comments/                 # Añadir comentario
 ```
 
-### Comentarios
+### Incidentes (area_admin+)
+
+Agrupan múltiples tickets del mismo servicio bajo un ticket maestro de seguimiento.
+Al resolver el maestro, todos los hijos se cierran automáticamente.
 
 ```
-GET    /api/helpdesks/{id}/comments/
-POST   /api/helpdesks/{id}/comments/
+GET    /api/helpdesks/incidents/                     # Lista de incidentes activos
+POST   /api/helpdesks/incidents/                     # Crear incidente
+GET    /api/helpdesks/incidents/{id}/                # Detalle + tickets vinculados
+POST   /api/helpdesks/incidents/{id}/link/           # Vincular tickets al incidente
+```
+
+**Body crear incidente:**
+```json
+{
+  "service": 3,
+  "origin": "error",
+  "priority": "high",
+  "problem_description": "Caída del servidor de producción",
+  "due_date": "2026-04-25T18:00:00Z",
+  "ticket_ids": [41, 43, 47]
+}
+```
+
+### Monitoreo de incidentes (area_admin+)
+
+Detecta servicios con acumulación anormal de tickets activos sin incidente asignado.
+
+```
+GET    /api/helpdesks/monitor/                       # Vista global
+GET    /api/helpdesks/monitor/?department=2          # Filtrado por departamento
+GET    /api/helpdesks/monitor/?threshold=3           # Override puntual del umbral
+```
+
+El threshold por defecto se resuelve en este orden:
+1. `?threshold=N` en la query string
+2. `SLAConfig.incident_threshold` del departamento
+3. `SLAConfig.incident_threshold` global
+4. `settings.INCIDENT_CANDIDATE_THRESHOLD` (default: 5)
+
+### SLA (area_admin+)
+
+```
+GET    /api/sla/technicians/                         # Perfiles de técnicos
+POST   /api/sla/technicians/                         # Crear perfil
+PUT    /api/sla/technicians/{id}/                    # Actualizar perfil
+DELETE /api/sla/technicians/{id}/                    # Eliminar perfil
+GET    /api/sla/configs/                             # Configuraciones SLA
+POST   /api/sla/configs/                             # Crear config (dept o global)
+PUT    /api/sla/configs/{id}/                        # Actualizar config
+GET    /api/sla/queue/                               # Cola de asignación pendiente
+```
+
+**Campos clave de SLAConfig:** `max_load`, `resolution_time`, `resolution_unit`,
+`score_overdue`, `score_company`, `score_area`, `score_individual`,
+`score_critical`, `score_high`, `score_medium`, `score_low`, `incident_threshold`
+
+### Clasificador
+
+```
+POST   /api/classify/                                # Sugerir servicio a partir de texto
+POST   /api/classify/feedback/                       # Registrar feedback del usuario
+GET    /api/classify/stats/                          # Estadísticas (area_admin+)
+POST   /api/classify/train/                          # Forzar entrenamiento (area_admin+)
+GET    /api/service-keywords/                        # Listar keywords (area_admin+)
+POST   /api/service-keywords/                        # Añadir keyword (area_admin+)
+DELETE /api/service-keywords/{id}/                   # Eliminar keyword (area_admin+)
+GET    /api/user-feedback-profiles/                  # Perfiles de confianza (area_admin+)
+PATCH  /api/user-feedback-profiles/{id}/             # Ajustar trust_score / flagged (area_admin+)
 ```
 
 ---
@@ -297,31 +352,35 @@ POST   /api/helpdesks/{id}/comments/
 
 ### Usuario final
 
-| Pantalla | Ruta | Descripción |
+| Pantalla | Ruta sugerida | Descripción |
 |---|---|---|
-| Crear HD | `/helpdesks/new` | Selector depto → categoría → servicio, formulario |
-| Mis HDs | `/helpdesks` | Tabla con folio, servicio, estado, fecha |
-| Detalle HD | `/helpdesks/{id}` | Info + hilo de comentarios + adjuntos |
+| Crear HD | `/helpdesks/new` | Clasificador sugiere servicio · selector depto → categoría → servicio · formulario |
+| Mis HDs | `/helpdesks` | Tabla con folio, servicio, estado, fecha · filtros por estado |
+| Detalle HD | `/helpdesks/{id}` | Info + hilo de comentarios + adjuntos · banner si ticket vinculado a incidente |
 
 ### Técnico
 
-| Pantalla | Ruta | Descripción |
+| Pantalla | Ruta sugerida | Descripción |
 |---|---|---|
-| Mi cola | `/queue` | HDs asignados, filtros por estado, cambio rápido de estado |
+| Mi cola | `/queue` | HDs asignados ordenados por urgencia · cambio rápido de estado |
 | Detalle HD | `/queue/{id}` | Igual que usuario + notas internas + resolver |
 
 ### Admin de área
 
-| Pantalla | Ruta | Descripción |
+| Pantalla | Ruta sugerida | Descripción |
 |---|---|---|
-| Panel del área | `/area/helpdesks` | Todos los HDs del depto, asignación de técnico |
+| Panel del área | `/area/helpdesks` | Todos los HDs del depto · asignación de técnico · filtro por departamento |
+| Monitoreo | `/area/monitor` | Servicios con acumulación anormal · botón crear incidente pre-llenado |
+| Incidentes | `/area/incidents` | Lista de incidentes activos · detalle con tickets vinculados |
+| Configuración SLA | `/area/sla` | Editar `max_load`, `resolution_time`, `incident_threshold` y pesos de urgencia |
 | Gestión de servicios | `/area/services` | CRUD de categorías y servicios |
 
 ### Super admin
 
-| Pantalla | Ruta | Descripción |
+| Pantalla | Ruta sugerida | Descripción |
 |---|---|---|
 | Departamentos | `/admin/departments` | CRUD de departamentos |
+| Configuración global SLA | `/admin/sla` | Config SLA que aplica a todos los departamentos sin config propia |
 
 ---
 
@@ -329,7 +388,7 @@ POST   /api/helpdesks/{id}/comments/
 
 ### Panel de confianza de usuarios del clasificador
 
-El endpoint `GET /classify/user-feedback-profiles/` ya existe y está protegido por `area_admin`/`super_admin`. Devuelve `user_id`, `trust_score`, `flagged`, `feedback_count` y `rate_limited_count` por usuario.
+El endpoint `GET /api/user-feedback-profiles/` ya existe y está protegido por `area_admin`/`super_admin`. Devuelve `user_id`, `trust_score`, `flagged`, `feedback_count` y `rate_limited_count` por usuario.
 
 **Pendiente:** definir la pantalla frontend correspondiente. El bloqueador actual es que el perfil solo almacena `user_id` (entero del sistema externo) y no hay un contrato definido para obtener nombre/email del usuario a partir de ese ID. Una vez que ese contrato exista, hay dos opciones de implementación:
 

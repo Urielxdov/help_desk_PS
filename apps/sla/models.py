@@ -123,6 +123,14 @@ class SLAConfig(models.Model):
         default=10,
         help_text="Puntaje adicional si priority='low' (solicitud, mejora, no urgente)"
     )
+    incident_threshold = models.PositiveIntegerField(
+        default=5,
+        help_text=(
+            "Cantidad mínima de tickets activos del mismo servicio para considerarlo "
+            "candidato a incidente en la vista de monitoreo. "
+            "0 = usar el default global de settings."
+        )
+    )
 
     class Meta:
         db_table = 'sla_slaconfig'

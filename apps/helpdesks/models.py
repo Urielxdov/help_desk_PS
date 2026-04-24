@@ -88,6 +88,14 @@ class HelpDesk(models.Model):
     resolved_at = models.DateTimeField(null=True, blank=True)
     impact = models.CharField(max_length=10, choices=IMPACT_CHOICES, default='individual')
     estimated_hours = models.PositiveIntegerField(help_text='Hours')
+    incident = models.ForeignKey(
+        'Incident',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='linked_tickets',
+        help_text='Incidente al que pertenece este ticket como hijo',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -106,6 +114,35 @@ class HelpDesk(models.Model):
 
     def __str__(self):
         return self.folio
+
+
+class Incident(models.Model):
+    """
+    Contenedor de un incidente masivo. Agrupa tickets del mismo servicio
+    afectado bajo un único ticket de seguimiento (master_ticket).
+
+    La separación en su propia tabla evita añadir flags derivados a HelpDesk
+    y da un lugar natural para futuros atributos del incidente
+    (causa raíz, postmortem, severidad, etc.).
+
+    master_ticket apunta al HelpDesk de seguimiento. Los tickets hijos
+    apuntan a este Incident via HelpDesk.incident (FK).
+    """
+    master_ticket = models.OneToOneField(
+        HelpDesk,
+        on_delete=models.PROTECT,
+        related_name='incident_master',
+        help_text='Ticket de seguimiento del incidente',
+    )
+    created_by_id = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'helpdesks_incident'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Incidente → {self.master_ticket.folio}'
 
 
 class HDAttachment(models.Model):

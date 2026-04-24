@@ -366,17 +366,25 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
 
 class IncidentViewSet(viewsets.GenericViewSet):
     """
-    Gestión de incidentes masivos. Solo area_admin y super_admin.
+    Gestión de incidentes masivos.
 
-    Responde con objetos Incident (no HelpDesk) que contienen el ticket
-    maestro y la lista de hijos. El ticket maestro sigue siendo un HelpDesk
-    normal accesible desde /api/helpdesks/{id}/.
+    list/retrieve: IsAuthenticated — cualquier rol puede consultar incidentes
+      activos (necesario para mostrar el banner al crear un ticket).
+    create/link: IsAreaAdmin — solo admins pueden crear o vincular incidentes.
+
+    Filtros disponibles en list:
+      ?service=<id>   — incidentes cuyo master_ticket pertenece a ese servicio
     """
     serializer_class = IncidentSerializer
-    permission_classes = [IsAreaAdmin]
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ('create', 'link'):
+            return [IsAreaAdmin()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
-        return (
+        qs = (
             Incident.objects
             .select_related('master_ticket__service__category__department')
             .prefetch_related(
@@ -385,6 +393,10 @@ class IncidentViewSet(viewsets.GenericViewSet):
                 ))
             )
         )
+        service_id = self.request.query_params.get('service')
+        if service_id:
+            qs = qs.filter(master_ticket__service_id=service_id)
+        return qs
 
     def list(self, request):
         qs = self.get_queryset()

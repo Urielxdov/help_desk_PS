@@ -4,8 +4,8 @@ from rest_framework.routers import DefaultRouter
 from .views import HDAttachmentViewSet, HDCommentViewSet, HelpDeskViewSet, IncidentViewSet, choices_view
 
 router = DefaultRouter()
+router.register('incidents', IncidentViewSet, basename='incident')
 router.register('helpdesks', HelpDeskViewSet, basename='helpdesk')
-router.register('helpdesks/incidents', IncidentViewSet, basename='incident')
 
 urlpatterns = router.urls + [
     path('choices/', choices_view, name='choices'),

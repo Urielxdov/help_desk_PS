@@ -8,7 +8,7 @@ class IsAreaAdmin(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return getattr(request.user, 'role', None) in ('area_admin', 'super_admin')
+        return getattr(request.user, 'real_role', None) in ('area_admin', 'super_admin')
 
 
 class IsSuperAdmin(BasePermission):
@@ -18,4 +18,4 @@ class IsSuperAdmin(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return getattr(request.user, 'role', None) == 'super_admin'
+        return getattr(request.user, 'real_role', None) == 'super_admin'

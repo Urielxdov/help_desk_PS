@@ -40,6 +40,27 @@ El sistema de usuarios es **externo**. El JWT llega en el header `Authorization:
 
 **Roles válidos:** `user`, `technician`, `area_admin`, `super_admin`
 
+### Atributos de rol en JWTUser
+
+| Atributo | Descripción | Usado en |
+|---|---|---|
+| `real_role` | Rol original del JWT, nunca cambia | Clases de permiso (`IsAreaAdmin`, `IsSuperAdmin`, `IsTechnicianOrAdmin`) y checks de acceso inline en vistas |
+| `active_role` | Override temporal; `None` si no hay override activo | Respuesta de `/api/auth/me/` y `/api/auth/switch-role/` |
+| `role` | Rol efectivo: `active_role` si está activo, si no `real_role` | Filtrado de datos en `get_queryset` y visibilidad de comentarios |
+
+### Override de rol (view-as)
+
+Permite a usuarios con rol superior simular la vista de un rol menor **sin perder acceso a los endpoints**. El override viaja en el campo `active_role` del JWT.
+
+**Flujo:**
+1. Cliente tiene JWT externo con `role: "super_admin"`.
+2. Llama `POST /api/auth/switch-role/` con `{"active_role": "technician"}`.
+3. Recibe un JWT nuevo (firmado por este servicio) con `{role: "super_admin", active_role: "technician"}`.
+4. Con ese JWT, las respuestas se filtran como las vería un `technician`; los permisos de endpoint siguen siendo de `super_admin`.
+5. Para revertir: llama `POST /api/auth/switch-role/` con `{"active_role": null}` o vuelve a usar el JWT original.
+
+**Regla de jerarquía:** `active_role` debe ser estrictamente menor al `role` real. Un token con `active_role >= role` es ignorado silenciosamente por `JWTAuthentication`.
+
 ## Arquitectura
 
 ```
@@ -47,8 +68,8 @@ config/          — settings.py, urls.py, wsgi.py, exceptions.py
 apps/
   catalog/       — Department → ServiceCategory → Service
   helpdesks/     — HelpDesk, HDAttachment, HDComment
-authentication.py       — JWTAuthentication + JWTUser
-authentication_urls.py  — POST /api/auth/token/
+authentication.py       — JWTAuthentication + JWTUser + ROLE_LEVEL
+authentication_urls.py  — POST /api/auth/token/ · POST /api/auth/switch-role/ · GET /api/auth/me/
 ```
 
 ### Dependencias entre apps
@@ -94,6 +115,8 @@ sudo chown -R www-data:www-data /var/data/calidadpro/media
 | Método | Ruta | Permiso |
 |---|---|---|
 | POST | `/api/auth/token/` | Público |
+| POST | `/api/auth/switch-role/` | auth |
+| GET | `/api/auth/me/` | auth |
 | GET/POST | `/api/departments/` | GET: auth / POST: super_admin |
 | GET | `/api/departments/{id}/categories/` | auth |
 | POST/PUT | `/api/service-categories/` | area_admin |

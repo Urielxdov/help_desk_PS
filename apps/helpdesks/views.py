@@ -184,7 +184,7 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
                            f'Valid options: {VALID_TRANSITIONS[hd.status]}'}
             )
 
-        if getattr(request.user, 'role', None) == 'technician' and new_status in ('resolved', 'closed'):
+        if getattr(request.user, 'real_role', None) == 'technician' and new_status in ('resolved', 'closed'):
             raise PermissionDenied('Technicians cannot mark tickets as resolved or closed from this endpoint.')
 
         hd.status = new_status
@@ -344,7 +344,7 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
                            'Será cerrado automáticamente cuando el incidente se resuelva.'}
             )
 
-        role = getattr(request.user, 'role', None)
+        role = getattr(request.user, 'real_role', None)
         is_requester = hd.requester_id == request.user.user_id
 
         if role == 'technician':

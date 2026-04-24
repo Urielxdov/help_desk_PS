@@ -106,7 +106,7 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_BEAT_SCHEDULE = {
     'recalculate-queue-scores': {
         'task': 'apps.sla.tasks.recalculate_queue_scores',
-        'schedule': 900,  # every 15 minutes
+        'schedule': crontab(hour=9, minute=0, day_of_week='1-5'),  # Mon-Fri 09:00
     },
     'process-queue-business-start': {
         'task': 'apps.sla.tasks.process_all_queues',

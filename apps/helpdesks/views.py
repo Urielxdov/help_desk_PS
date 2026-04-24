@@ -132,9 +132,10 @@ class HelpDeskViewSet(viewsets.GenericViewSet):
         role = getattr(user, 'role', None)
         qs = (
             HelpDesk.objects
-            .select_related('service__category__department', 'incident__master_ticket')
+            .select_related('service__category__department')
             .prefetch_related(
                 'attachments',
+                Prefetch('incident', queryset=Incident.objects.select_related('master_ticket')),
                 Prefetch('incident_master__linked_tickets'),
             )
             .annotate(
